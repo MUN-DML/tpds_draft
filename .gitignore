@@ -1,0 +1,21 @@
+# Track only the files required to build the manuscript.
+/*
+!/.gitignore
+!/README.md
+!/Makefile
+!/Source/
+/Source/*
+!/Source/Makefile
+!/Source/prolet.tex
+!/Source/reference.bib
+!/Source/figures/
+/Source/figures/*
+!/Source/figures/conweave_uplink_queues.pdf
+!/Source/figures/pfc_boundary_explained.pdf
+!/Source/figures/conga_pfc_boundary_gaps.pdf
+!/Source/figures/conga_four_panels.pdf
+!/Source/AVG_32_ALI.pdf
+!/Source/P99_32_ALI.pdf
+!/Source/figures/duogran_timeout_subflow_fct.pdf
+!/Source/figures/dst_reordering_buffer_cdf.pdf
+!/Source/figures/duogran_gap_sensitivity.pdf
