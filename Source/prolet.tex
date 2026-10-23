@@ -423,7 +423,9 @@ We compare timeout-only DuoGran against DuoGran with the protected subflow branc
 \begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/duogran_timeout_subflow_fct.pdf}
-    \caption{Average and P99 FCT with and without protected subflow rerouting under Hadoop. Flow-size ticks denote bin upper bounds; 1 MB equals $10^6$ bytes.}
+    \par\vspace{-2pt} % Keep only a small gap below the embedded panel caption.
+    \setlength{\abovecaptionskip}{0pt}
+    \caption{FCT with and without protected subflow rerouting under Hadoop: (a) average; (b) P99. Flow-size ticks denote bin upper bounds; 1 MB equals $10^6$ bytes.}
     \label{fig:subflow_fct_ablation}
 \end{figure}
 
@@ -431,7 +433,9 @@ Figure~\ref{fig:subflow_fct_ablation} shows that the gains are concentrated in l
 
 \begin{figure}[t]
     \centering
-    \includegraphics[width=0.85\columnwidth]{figures/dst_reordering_buffer_cdf.pdf}
+    \includegraphics[width=\columnwidth]{figures/dst_reordering_buffer_cdf.pdf}
+    \par\vspace{-4pt} % Keep a small gap below the embedded panel captions.
+    \setlength{\abovecaptionskip}{0pt}
     \caption{Destination-ToR reordering-buffer occupancy in the 4.0--4.7-ms window of the 5-ms workload: (a) per-ToR CDF, including zero samples, with the 92--100\% range shown and P99 marked; (b) simultaneous total across eight ToRs, with time relative to the window start. One KB equals 1,000 bytes.}
     \label{fig:dst_buffer_occupancy}
 \end{figure}
