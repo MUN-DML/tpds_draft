@@ -13,10 +13,25 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
 \usepackage[hidelinks]{hyperref}
+\newcounter{algorithm}
 
-% Prefer one single-column top float; allow explicit top stacks where needed.
+% Place floats only at the top; prevent stacked full-width floats.
 \setcounter{topnumber}{1}
+\setcounter{bottomnumber}{0}
+\setcounter{dbltopnumber}{1}
 \renewcommand{\topfraction}{0.85}
+\renewcommand{\dbltopfraction}{0.85}
+% Keep single-column floats off pages already headed by a full-width float.
+\makeatletter
+\setlength{\@fptop}{0pt}
+\setlength{\@dblfptop}{0pt}
+\let\TPDS@addtotoporbot\@addtotoporbot
+\def\@addtotoporbot{%
+    \ifx\@dbltoplist\@empty
+        \TPDS@addtotoporbot
+    \fi
+}
+\makeatother
 
 \begin{document}
 
@@ -134,7 +149,7 @@ Existing approaches in lossless RDMA face a tradeoff between improving path util
 \label{sec:conweave_motivation}
 Congestion-triggered rerouting responds to congestion on the current path, but does not necessarily redistribute traffic whenever another path offers spare capacity. Load imbalance may therefore persist before rerouting is triggered or takes effect. We examine this limitation through local uplink measurements under ConWeave.
 
-\begin{figure}[!t]
+\begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/conweave_uplink_queues.pdf}
     \caption{The plots show the utilization and egress queue occupancy of selected uplinks at a source ToR under ConWeave. Link utilization is measured over 10-$\mu$s windows, and queue occupancy is sampled every 1~$\mu$s.}
@@ -147,29 +162,27 @@ This observation motivates exploiting opportunities to redistribute traffic beyo
 
 \subsection{Natural Rerouting Opportunities in Lossless RDMA}
 \label{sec:pfc_gaps}
-\setcounter{dbltopnumber}{2}
 Hardware-paced RDMA streams typically have short inter-packet arrival gaps, making natural flowlet opportunities difficult to find~\cite{HF2T, Conweave}. Nevertheless, PFC pauses can introduce large gaps into otherwise continuous streams. These gaps provide opportunities to switch to a faster path while preserving packet order.
 
-\setcounter{dbltopnumber}{2}
 
 
 
 
-\begin{figure}[!t]
+\begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/pfc_boundary_explained.pdf}
     \caption{Consecutive same-flow packets A and B are transmitted before the pause and after resumption, respectively. The PFC pause creates an inter-packet arrival gap at the downstream switch.}
     \label{fig:pfc_boundary_explained}
 \end{figure}
 
-\begin{figure}[!t]
+\begin{figure}[t]
     \centering
     \includegraphics[width=\columnwidth]{figures/conga_pfc_boundary_gaps.pdf}
     \caption{Same-flow inter-packet arrival-gap CDFs under CONGA on a 128-host leaf--spine topology with the all-to-all AliStorage workload at 80\% load and 100-ms traffic generation, measured at (a) spine ingress and (b) destination-ToR ingress.}
     \label{fig:conga_pfc_boundary_gaps}
 \end{figure}
 
-\begin{figure*}[!t]
+\begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/conga_four_panels.pdf}
     \par\vspace{0pt}
@@ -318,6 +331,45 @@ Although dynamic per-connection timeouts exploit PFC-induced arrival gaps, ordin
 
 An ordinary flowlet switch outside an active handoff does not initiate destination buffering. Switches during an active handoff remain covered by its boundary tracking. The existing arrival gap gives previously transmitted packets a head start, although END is injected at the switching decision and must still traverse the old path. The buffering evaluation in Sec.~\ref{sec:dst_buffer_occupancy} examines the resulting occupancy.
 
+\begin{figure}[t]
+    \centering
+    \begin{minipage}{\columnwidth}
+    \small
+    \refstepcounter{algorithm}\label{alg:per_packet_selection}
+    \hrule\vspace{4pt}
+    \textbf{Algorithm \thealgorithm: Per-packet Path Selection at the Source ToR}
+    \par\vspace{3pt}\hrule\vspace{4pt}
+    \textbf{Input:} Each data packet $p$ arriving at the source ToR.\par
+    \textbf{Output:} Forwarding path for $p$.\par
+    \newcommand{\algline}[2]{\item\hspace*{#1em}#2}
+    \begin{enumerate}[label=\arabic*:,leftmargin=1.8em,labelsep=0.5em,itemsep=0pt,parsep=0pt,topsep=4pt]
+        \algline{0}{\textbf{procedure} \textsc{SelectPath}($p$)}
+        \algline{1}{\textbf{if} \textsc{NewConnection}($p$) \textbf{then}}
+        \algline{2}{\textbf{return} \textsc{ExplorationFirst}($p$)}
+        \algline{1}{\textbf{end if}}
+        \algline{1}{$c\gets\textsc{CurrentPath}(p)$}
+        \algline{1}{$b\gets\textsc{ChooseAvailable}(p)$}
+        \algline{1}{$g\gets\textsc{ArrivalGap}(p)$}
+        \algline{1}{\textbf{if} \textsc{Beneficial}($c,b$) \textbf{then}}
+        \algline{2}{\textbf{if not} \textsc{Congested}($c$) \textbf{then}}
+        \algline{3}{$T\gets\textsc{DynamicTimeout}(c,b)$}
+        \algline{3}{\textbf{if} $g>T$ \textbf{and not} \textsc{Paused}($c$) \textbf{then}}
+        \algline{4}{\textbf{return} $b$}
+        \algline{3}{\textbf{end if}}
+        \algline{2}{\textbf{else}}
+        \algline{3}{\textbf{if} $g>g_{\min}$ \textbf{and} $L_b<L_c$ \textbf{then}}
+        \algline{4}{\textsc{ProtectedSubflowSwitch}($p,c,b$)}
+        \algline{4}{\textbf{return} $b$}
+        \algline{3}{\textbf{end if}}
+        \algline{2}{\textbf{end if}}
+        \algline{1}{\textbf{end if}}
+        \algline{1}{\textbf{return} $c$}
+        \algline{0}{\textbf{end procedure}}
+    \end{enumerate}
+    \vspace{2pt}\hrule
+    \end{minipage}
+\end{figure}
+
 \subsection{Implementation and Overhead Analysis}
 \label{sec:implementation}
 \noindent
@@ -339,9 +391,16 @@ The per-flow table records the selected path and last packet-arrival time, with 
 
 
 
+\begin{figure*}[t]
+    \centering
+    \includegraphics[width=\textwidth]{figures/workload_fct_comparison.pdf}
+    \caption{Average and P99 FCT under AliStorage (a, b) and Meta Hadoop (c, d) on Spine--Leaf-128 at 80\% load with 10-ms traffic injection. Horizontal axes are logarithmic. AliStorage y-axes are linear below 30~$\mu$s in (a) and 120~$\mu$s in (b), with logarithmic compression above; ticks show actual FCT values. CONGA tails exceeding the displayed limits are clipped. Meta Hadoop uses logarithmic FCT axes. Ticks denote bin upper bounds; 1 KB equals $10^3$ bytes. Statistics use all completed flows. Meta Hadoop baseline measurements remain unavailable.}
+    \label{fig:FCT_large_top}
+\end{figure*}
+
 \section{Performance Evaluation}
 \noindent
-\textbf{Draft evaluation status:} The FCT and PFC results in Sec.~\ref{sec:result} are retained from the earlier prototype, which used flow-size classification and a different timeout mechanism. They are historical reference results, not measurements of the revised exploration-first design in Sec.~\ref{sec:exploration}. Sections~\ref{sec:subflow_fct_ablation} and~\ref{sec:dst_buffer_occupancy} separately report a preliminary FCT ablation and a buffering experiment with the current DuoGran extension. A full evaluation of the revised design remains necessary before general performance gains can be claimed.
+\textbf{Draft evaluation status:} Figure~\ref{fig:FCT_large_top} reports the revised DuoGran design and available baseline FCT results; the Meta Hadoop baseline comparison remains incomplete. Sections~\ref{sec:subflow_fct_ablation} and~\ref{sec:dst_buffer_occupancy} separately report a preliminary FCT ablation and a buffering experiment with the current DuoGran extension. A full evaluation of the revised design remains necessary before general performance gains can be claimed.
 
 
 \subsection{Simulation Setup} 
@@ -357,18 +416,9 @@ The evaluation framework uses NS-3~\cite{ns3} and builds upon the open-source Co
 \textbf{Network topology:} We evaluate DuoGran using two network topologies with $100\,\mathrm{Gbps}$ links and $1~\mu\mathrm{s}$ delay. The first is a three-tier Fat-Tree with four pods, connecting 32 servers with a $2{:}1$ oversubscription ratio and four equal-cost paths. The second is a two-tier Spine--Leaf connecting 128 servers ($16$ per rack) through an $8 \times 8$ switch fabric.
 
 \noindent
-\textbf{Performance metrics:} The historical comparisons report average and P99 tail FCT slowdowns. Slowdown is the ratio of actual FCT to the ideal FCT (the sum of propagation and transmission delays). A value of 1 indicates optimal performance, while values above 1 signify congestion-induced delays. The subflow ablation in Sec.~\ref{sec:subflow_fct_ablation} instead reports absolute average and P99 FCT.
+\textbf{Performance metrics:} We report average and P99 FCT in milliseconds, including all completed flows and the drain period. For size-binned comparisons, both statistics are computed directly from the individual FCTs within each bin.
 
-\begin{figure}[t]
-    \centering
-    \subfloat[\textbf{Average FCT.}\label{fig:fct_fat_tree_avg}]{
-        \includegraphics[width=0.46\columnwidth]{AVG_32_ALI.pdf}}
-    \hfill
-    \subfloat[\textbf{P99 FCT.}\label{fig:fct_fat_tree_p99}]{
-        \includegraphics[width=0.46\columnwidth]{P99_32_ALI.pdf}}
-    \caption{Historical reference: average and tail FCT slowdowns from the earlier prototype for AliStorage on Fat-Tree-32 (80\% load, all-to-all). These curves do not evaluate the revised exploration-first design.}
-    \label{fig:FCT_large_top}
-\end{figure}
+
 
 \subsection{Workload Generation} 
 To demonstrate the generalization of DuoGran, we evaluate DuoGran in workloads with different flow size distribution and traffic pattern. The existing workloads are divided into two application scenarios.
@@ -408,41 +458,41 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
     \end{tabular}
 \end{table*}
 
-\subsection{Earlier Results and Evaluation Needs}
+\subsection{FCT Comparison}
 \label{sec:result}
+
+
+
+
 \noindent
-\textbf{Reduction in PFC pause frames:} Since RDMA relies on PFC to ensure losslessness, the frequency of pause frames serves as a direct indicator of network-wide congestion \cite{PFC_inidcator}. Table~\ref{Table:stats} compares the total PFC pause frame count in a 128-host Spine-Leaf topology in millions. These historical baseline measurements do not quantify the revised policy's effect.
+\textbf{Average and P99 FCT:} Figure~\ref{fig:FCT_large_top} compares DuoGran, ConWeave, and CONGA under AliStorage and Meta Hadoop. The AliStorage curves use the same 156,777 flows across all three schemes. For Meta Hadoop, the available DuoGran results cover 52,469 flows; corresponding ConWeave and CONGA measurements remain to be collected.
+
+
+
+
+
+
+
 \begin{table}[t]
-\centering
-\setlength{\tabcolsep}{3pt}
-\caption{Historical reference: flowlet packet-count statistic (>100 packets) and PFC pause frames from the earlier prototype under AliStorage on Spine-Leaf-128.}
-\begin{tabular}{lcc}
-\hline
-\textbf{Scheme}   & \textbf{Avg. Packet Count}  & \textbf{PFC Frames (M)}\\
-\hline
-ECMP~\cite{ECMP}            & \textemdash   & 12.7 \\
-CONGA~\cite{Conga}      & 638           & 9.8\\   
-LetFlow~\cite{Letflow}  & 612           & 12.9\\
-ConWeave~\cite{Conweave}          & \textemdash   & 0.8 \\
-\hline
-\end{tabular}
-\label{Table:stats}
+    \centering
+    \caption{Network-wide ConWeave reordering counts over the complete run (20-ms traffic generation; 20.8-ms observation).}
+    \label{tab:conweave_reordering_observation}
+    \footnotesize
+    \renewcommand{\arraystretch}{1.15}
+    \begin{tabularx}{\columnwidth}{@{}Xr@{}}
+        \toprule
+        \textbf{Metric} & \textbf{ConWeave} \\
+        \midrule
+        Total reordering episodes & 36,480 \\
+        Timeout-based releases & 18 \\
+        Out-of-order packets detected at RNIC (arrival count) & 1,063 \\
+        \bottomrule
+    \end{tabularx}
+    \par\smallskip
+    \begin{minipage}{\columnwidth}
+    \footnotesize TAIL-based releases: 36,462; unreleased episodes at end: 0. Counts cover the full input logs, including the drain period. The out-of-order count includes arrivals with a sequence number greater than the RNIC's next expected sequence number; repeated arrivals can be counted more than once.
+    \end{minipage}
 \end{table}
-
-
-
-\noindent
-\textbf{Reduction in average and tail FCT slowdown:} The earlier prototype reported reductions in average and P99 FCT slowdown of up to 69\% and 79\%, respectively, in Fig.~\ref{fig:FCT_large_top}. Its analysis considered the following limitations of the baselines.
-\begin{enumerate*}[label=(\roman*)]
-    \item \textbf{Static-timeout schemes:} A fixed timeout may miss usable gaps even when the workload contains sufficiently large inter-packet gaps; the relevant comparison is between each gap and the applicable rerouting threshold.
-    \item \textbf{Subflow-based schemes:} While ConWeave's subflow-based rerouting is effective in a 128-host Spine-Leaf topology, it is sensitive to network scale. In a 32-host topology with fewer equal-cost paths, mice flows suffer from persistent hash collisions, and rerouting them prolongs their FCT.
-\end{enumerate*}
-
-
-
-
-
-
 
 \subsection{Effect of Protected Subflow Rerouting}
 \label{sec:subflow_fct_ablation}
@@ -474,26 +524,7 @@ Figure~\ref{fig:subflow_fct_ablation} shows that the gains are concentrated in l
 
 
 
-\begin{table}[!b]
-    \centering
-    \caption{Network-wide ConWeave reordering counts over the complete run (20-ms traffic generation; 20.8-ms observation).}
-    \label{tab:conweave_reordering_observation}
-    \footnotesize
-    \renewcommand{\arraystretch}{1.15}
-    \begin{tabularx}{\columnwidth}{@{}Xr@{}}
-        \toprule
-        \textbf{Metric} & \textbf{ConWeave} \\
-        \midrule
-        Total reordering episodes & 36,480 \\
-        Timeout-based releases & 18 \\
-        Out-of-order packets detected at RNIC (arrival count) & 1,063 \\
-        \bottomrule
-    \end{tabularx}
-    \par\smallskip
-    \begin{minipage}{\columnwidth}
-    \footnotesize TAIL-based releases: 36,462; unreleased episodes at end: 0. Counts cover the full input logs, including the drain period. The out-of-order count includes arrivals with a sequence number greater than the RNIC's next expected sequence number; repeated arrivals can be counted more than once.
-    \end{minipage}
-\end{table}
+
 
 Table~\ref{tab:conweave_reordering_observation} separates reordering episodes, timeout-based releases, and out-of-order arrivals at the receiver RNIC. Of 36,480 episodes, 36,462 end through TAIL-based release and 18 through timeout-based release; the receiver RNIC detects 1,063 out-of-order arrivals. Residual reordering occurs in this run, but the aggregate counts do not establish that timeout-based release caused these out-of-order arrivals. These counts describe reordering behavior; they do not measure destination-buffer occupancy or packet waiting time.
 
@@ -515,7 +546,7 @@ These mechanisms are consistent with the lower occupancy observed here, but this
 \noindent
 \textbf{Required revised evaluation:} Repeat average and P99 FCT, PFC, and packet-reordering measurements with the current implementation and matched traffic seeds and payload settings. Compare rerouting enabled and disabled while keeping initial exploration identical. Report accepted path changes and the distributions of packet gaps, computed timeouts, predicted improvements, and OWL sample ages. These distinguish identifying a sufficiently large gap from actually admitting a beneficial path change. Sparse new-flow arrivals, delayed feedback, and rapid OWL changes should be examined because the current policy cannot guarantee fresh measurements on unused paths or bound unobserved queue changes.
 
-\begin{figure*}[!t]
+\begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/duogran_gap_sensitivity.pdf}
     \caption{Sensitivity to the early-rerouting gap threshold: average and P99 FCT under Hadoop (a, b) and AliStorage (c, d). Legend values are gap thresholds. Flow-size ticks indicate workload-specific bin upper bounds; 1 MB equals $10^6$ bytes. The vertical axes use a quadratic scale (position proportional to FCT$^2$), while tick labels show actual FCT in milliseconds.}
