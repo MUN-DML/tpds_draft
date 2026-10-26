@@ -444,16 +444,16 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
         \toprule
         \textbf{Communication type} & \textbf{Flow size} & \textbf{Flow count} & \textbf{Placement} & \shortstack{\textbf{ConWeave}\\\textbf{Avg/P99 FCT (ms)}} & \shortstack{\textbf{DuoGran}\\\textbf{Avg/P99 FCT (ms)}} \\
         \midrule
-        \textbf{DP ReduceScatter} & \textbf{\boldmath$\approx274.797$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{58.619 / 80.056} & \textbf{39.010 / 199.910} \\
-        \textbf{DP AllGather} & \textbf{\boldmath$\approx137.398$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{23.834 / 36.011} & \textbf{14.177 / 45.698} \\
+        \textbf{DP ReduceScatter} & \textbf{\boldmath$\approx274.797$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{58.619 / 80.056} & \textbf{36.281 / 107.931} \\
+        \textbf{DP AllGather} & \textbf{\boldmath$\approx137.398$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{23.834 / 36.011} & \textbf{15.027 / 53.745} \\
         \midrule
         TP AllReduce & 4~MiB & 104,448 & Intra-leaf & 0.34739 / 0.34736 & 0.34739 / 0.34736 \\
-        TP AllReduce & 1~B & 768 & Intra-leaf & 0.00413 / 0.00741 & 0.00422 / 0.01002 \\
+        TP AllReduce & 1~B & 768 & Intra-leaf & 0.00413 / 0.00741 & 0.00414 / 0.00697 \\
         TP Broadcast & 40~B & 384 & Intra-leaf & 0.00404 / 0.00432 & 0.00404 / 0.00432 \\
         TP Broadcast & 17~KiB & 384 & Intra-leaf & 0.00593 / 0.00686 & 0.00593 / 0.00686 \\
         PP Activation/Gradient & 16~MiB & 768 & Intra-leaf & 1.396 / 1.772 & 1.396 / 1.772 \\
         \midrule
-        \multicolumn{4}{@{}l}{\textbf{Iteration completion time (ms)}} & 1263.132 & 1324.779 \\
+        \multicolumn{4}{@{}l}{\textbf{Iteration completion time (ms)}} & 1263.132 & 1202.824 \\
         \bottomrule
     \end{tabular}
 \end{table*}
