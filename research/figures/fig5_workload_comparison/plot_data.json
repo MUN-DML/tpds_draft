@@ -1,331 +1,383 @@
 {
   "metric": "absolute FCT in milliseconds",
-  "settings": "128-host Spine-Leaf, 100 Gbps, OS2, DCQCN, PFC, 4096-byte payload, 80% network load, seed 1, 10 ms injection",
+  "settings": "128-host Spine-Leaf, 100 Gbps, OS2, DCQCN, PFC, 4096-byte payload, 80% network load, seed 1; injection windows are recorded per scheme",
   "cohort": "all completed flows including drain; no warmup exclusion",
   "grouping": "fixed workload-specific byte bins; lower exclusive, upper inclusive; shared by all schemes",
   "quantile": "numpy linear interpolation, p=0.99; computed from individual FCTs in each bin",
-  "missing": "None means no matching measurements; no curve is drawn",
-  "axes": "logarithmic x at actual bin upper bounds (KB); AliStorage piecewise linear/logarithmic y; Meta Hadoop logarithmic y",
+  "cohorts": "ConWeave and CONGA have paired 100-ms inputs; original DuoGran 10-ms curves are retained as historical results, with independent flow counts per bin",
+  "axes": "logarithmic x at actual bin upper bounds (KB); both workloads use a linear lower y range and progressively logarithmic upper-range compression",
   "alistorage_y_transform": {
-    "formula": "f(y)=y for y<=k; f(y)=k+A*ln(1+(y-k)/s) for y>k; y in microseconds",
-    "normalization": "A fixes the displayed height of the low linear range to the approved reference scale.",
+    "formula": "f(y)=y for y<=k; f(y)=k+s*ln(1+(y-k)/s) for y>k; y in microseconds",
+    "normalization": "The upper branch has unit slope at the knee, then compresses progressively; ConWeave has at least 5% displayed vertical headroom.",
     "all_measured_values_visible": false,
-    "clipping": "Values above the displayed limits are clipped; raw statistics remain unchanged.",
+    "clipping": "ConWeave and DuoGran are entirely inside the axes. CONGA may exceed the upper boundary; raw statistics are unchanged.",
     "clipped_points": [
       {
         "scheme": "CONGA",
-        "metric": "mean_ms",
-        "bin_upper_bytes": 2000000,
-        "value_us": 1597.0404928698754
-      },
-      {
-        "scheme": "CONGA",
-        "metric": "p99_ms",
-        "bin_upper_bytes": 1500000,
-        "value_us": 2837.657600000004
-      },
-      {
-        "scheme": "CONGA",
         "metric": "p99_ms",
         "bin_upper_bytes": 2000000,
-        "value_us": 3575.807679999999
+        "value_us": 5291.197969999999
       }
     ],
     "average": {
       "k": 30.0,
-      "s": 150.0,
-      "A": 11.783364393062266,
+      "s": 3.0,
+      "A": 3.0,
       "limits_us": [
         10.0,
-        1250.0
+        2200.0
       ],
-      "low_range_height_fraction": 0.43417866860604637,
-      "reference_compression": 4.5,
-      "reference_upper_us": 1500.0
+      "low_range_height_fraction": 0.5030718184672346,
+      "slope_at_knee": 1.0,
+      "conweave_top_margin_fraction": 0.05383491217845323
     },
     "p99": {
       "k": 120.0,
-      "s": 400.0,
-      "A": 34.9356603706931,
+      "s": 40.0,
+      "A": 40.0,
       "limits_us": [
         40.0,
-        2500.0
+        4000.0
       ],
-      "low_range_height_fraction": 0.5415239914107907,
-      "reference_compression": 12.0,
-      "reference_upper_us": 3500.0
+      "low_range_height_fraction": 0.30372207706085386,
+      "slope_at_knee": 1.0,
+      "conweave_top_margin_fraction": 0.06745276521569923
     }
   },
   "workloads": {
     "AliStorage": {
       "inputs": {
         "DuoGran": {
-          "path": "/home/hongw/Desktop/ns-allinone-3.19/prolet/output/duogran-default-subflow-20261019/alistorage/ewma_q/run_out_fct.txt",
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/AliStorage2019/DuoGran/output-duogran-owl-admission-20261020-alistorage-before-07fa4cab/artifacts/run_out_fct.txt",
           "sha256": "7aa97c5f038b9b56489c64487f557b74b5d8a6da6c894760e9cdf16a9b9c9141",
+          "archive_record": "runs/AliStorage2019/DuoGran/output-duogran-owl-admission-20261020-alistorage-before-07fa4cab/record.json",
+          "input_sha256": "18522d43746597a8a2b97f993a5c324a601183f3fa9683b0ec3e6a81f181c591",
+          "arrival_window_ms": 10,
+          "network_load_percent": 80,
           "flow_count": 156777,
           "mean_ms": 0.033491083443362234,
           "p99_ms": 0.681350639999996
         },
         "ConWeave": {
-          "path": "/home/hongw/Desktop/ns-allinone-3.19/prolet/output/duogran-conga-conweave-20261003/conweave/run_out_fct.txt",
-          "sha256": "5c02fcee2a65a3cf5c7c60840e2a549bc962f54be20e4c2bff70dd0c9df5ba76",
-          "flow_count": 156777,
-          "mean_ms": 0.0386860511299489,
-          "p99_ms": 0.7296082399999992
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/AliStorage2019/ConWeave/reports-matrix-cdf-100ms-20261029-conweave-alistorage-ccffb81b/artifacts/fct.txt",
+          "sha256": "886a8d529e503ceb832f01ec50948276b94110881c8066d007ef9fb20d616409",
+          "archive_record": "runs/AliStorage2019/ConWeave/reports-matrix-cdf-100ms-20261029-conweave-alistorage-ccffb81b/record.json",
+          "input_sha256": "b61ffaa09b57795094b83ed8463ce88016ef2dd954f65272e1f9c047872ee717",
+          "arrival_window_ms": 100,
+          "network_load_percent": 80,
+          "flow_count": 1567425,
+          "mean_ms": 0.04288329457996396,
+          "p99_ms": 0.7794407600000001
         },
         "CONGA": {
-          "path": "/home/hongw/Desktop/ns-allinone-3.19/prolet/output/duogran-conga-conweave-20261003/conga/run_out_fct.txt",
-          "sha256": "a047c742561eb1827d969e7dcc1fb7c498e318f1b92d278935e1b8978f1ea8b7",
-          "flow_count": 156777,
-          "mean_ms": 0.06464984715870312,
-          "p99_ms": 1.0540920799999964
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/AliStorage2019/CONGA/output-conga-paper-128-100ms-20261023-4a42b096/artifacts/run_out_fct.txt",
+          "sha256": "c6052433181f8d882e116f6d669ad02a6c33af815d53e1cb77e626514cb8fc5a",
+          "archive_record": "runs/AliStorage2019/CONGA/output-conga-paper-128-100ms-20261023-4a42b096/record.json",
+          "input_sha256": "b61ffaa09b57795094b83ed8463ce88016ef2dd954f65272e1f9c047872ee717",
+          "arrival_window_ms": 100,
+          "network_load_percent": 80,
+          "flow_count": 1567425,
+          "mean_ms": 0.07880231042314623,
+          "p99_ms": 1.2007051600000032
         }
       },
       "bins": [
         {
           "lower_exclusive_bytes": 0,
           "upper_inclusive_bytes": 1000,
-          "n": 8970,
+          "counts": {
+            "DuoGran": 8970,
+            "ConWeave": 89515,
+            "CONGA": 89515
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.015343122185061314,
               "p99_ms": 0.06430905999999983
             },
             "ConWeave": {
-              "mean_ms": 0.01986502998885173,
-              "p99_ms": 0.0862902799999999
+              "mean_ms": 0.02268428032173379,
+              "p99_ms": 0.1225128800000001
             },
             "CONGA": {
-              "mean_ms": 0.035897839464882945,
-              "p99_ms": 0.2325238999999997
+              "mean_ms": 0.04504501054571859,
+              "p99_ms": 0.29505104000000004
             }
           }
         },
         {
           "lower_exclusive_bytes": 1000,
           "upper_inclusive_bytes": 2000,
-          "n": 9101,
+          "counts": {
+            "DuoGran": 9101,
+            "ConWeave": 89613,
+            "CONGA": 89613
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.015741011427315686,
               "p99_ms": 0.066011
             },
             "ConWeave": {
-              "mean_ms": 0.020147969673662235,
-              "p99_ms": 0.086125
+              "mean_ms": 0.022862553491122945,
+              "p99_ms": 0.1189048400000002
             },
             "CONGA": {
-              "mean_ms": 0.03604185737831008,
-              "p99_ms": 0.226616
+              "mean_ms": 0.045344896521710025,
+              "p99_ms": 0.29072080000000017
             }
           }
         },
         {
           "lower_exclusive_bytes": 2000,
           "upper_inclusive_bytes": 5000,
-          "n": 35951,
+          "counts": {
+            "DuoGran": 35951,
+            "ConWeave": 360904,
+            "CONGA": 360904
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.01630700967984201,
               "p99_ms": 0.06575049999999999
             },
             "ConWeave": {
-              "mean_ms": 0.020859937915496094,
-              "p99_ms": 0.0886015
+              "mean_ms": 0.02373906255957263,
+              "p99_ms": 0.12296509999999916
             },
             "CONGA": {
-              "mean_ms": 0.0366537187004534,
-              "p99_ms": 0.22473500000000002
+              "mean_ms": 0.04677977282324386,
+              "p99_ms": 0.29741793999999994
             }
           }
         },
         {
           "lower_exclusive_bytes": 5000,
           "upper_inclusive_bytes": 10000,
-          "n": 58849,
+          "counts": {
+            "DuoGran": 58849,
+            "ConWeave": 590142,
+            "CONGA": 590142
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.017048823310506552,
               "p99_ms": 0.06529623999999996
             },
             "ConWeave": {
-              "mean_ms": 0.021566035531614812,
-              "p99_ms": 0.08720404
+              "mean_ms": 0.02446504637189016,
+              "p99_ms": 0.12382266999999957
             },
             "CONGA": {
-              "mean_ms": 0.03810824243402607,
-              "p99_ms": 0.22860471999999965
+              "mean_ms": 0.04780551471171344,
+              "p99_ms": 0.2976865399999998
             }
           }
         },
         {
           "lower_exclusive_bytes": 10000,
           "upper_inclusive_bytes": 20000,
-          "n": 17242,
+          "counts": {
+            "DuoGran": 17242,
+            "ConWeave": 172487,
+            "CONGA": 172487
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.019007368808722887,
               "p99_ms": 0.06802047000000001
             },
             "ConWeave": {
-              "mean_ms": 0.02344570705254611,
-              "p99_ms": 0.0900904
+              "mean_ms": 0.026426121046803527,
+              "p99_ms": 0.1276046399999996
             },
             "CONGA": {
-              "mean_ms": 0.040911500637977036,
-              "p99_ms": 0.24027623000000004
+              "mean_ms": 0.05097083234678555,
+              "p99_ms": 0.3048276799999998
             }
           }
         },
         {
           "lower_exclusive_bytes": 20000,
           "upper_inclusive_bytes": 50000,
-          "n": 14364,
+          "counts": {
+            "DuoGran": 14364,
+            "ConWeave": 142327,
+            "CONGA": 142327
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.022339158173210808,
               "p99_ms": 0.07316994999999996
             },
             "ConWeave": {
-              "mean_ms": 0.027059149401280982,
-              "p99_ms": 0.09371753999999995
+              "mean_ms": 0.03041838637784819,
+              "p99_ms": 0.1321835399999998
             },
             "CONGA": {
-              "mean_ms": 0.046339087928153715,
-              "p99_ms": 0.2477501899999999
+              "mean_ms": 0.05729289505153625,
+              "p99_ms": 0.3187289399999997
             }
           }
         },
         {
           "lower_exclusive_bytes": 50000,
           "upper_inclusive_bytes": 100000,
-          "n": 5027,
+          "counts": {
+            "DuoGran": 5027,
+            "ConWeave": 49654,
+            "CONGA": 49654
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.032541545454545455,
               "p99_ms": 0.09224715999999994
             },
             "ConWeave": {
-              "mean_ms": 0.037241533518997415,
-              "p99_ms": 0.1111348599999998
+              "mean_ms": 0.04138464250614251,
+              "p99_ms": 0.1553767700000001
             },
             "CONGA": {
-              "mean_ms": 0.05936104893574697,
-              "p99_ms": 0.27605781999999995
+              "mean_ms": 0.07514982307568374,
+              "p99_ms": 0.37271857000000014
             }
           }
         },
         {
           "lower_exclusive_bytes": 100000,
           "upper_inclusive_bytes": 250000,
-          "n": 3360,
+          "counts": {
+            "DuoGran": 3360,
+            "ConWeave": 33470,
+            "CONGA": 33470
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.0490724375,
               "p99_ms": 0.1300894
             },
             "ConWeave": {
-              "mean_ms": 0.05305270327380952,
-              "p99_ms": 0.14364353999999993
+              "mean_ms": 0.05799518709291904,
+              "p99_ms": 0.21072232999999782
             },
             "CONGA": {
-              "mean_ms": 0.0887753232142857,
-              "p99_ms": 0.6640935299999993
+              "mean_ms": 0.11180390283836271,
+              "p99_ms": 0.8343476499999979
             }
           }
         },
         {
           "lower_exclusive_bytes": 250000,
           "upper_inclusive_bytes": 500000,
-          "n": 601,
+          "counts": {
+            "DuoGran": 601,
+            "ConWeave": 5918,
+            "CONGA": 5918
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.14360668552412648,
               "p99_ms": 0.797729
             },
             "ConWeave": {
-              "mean_ms": 0.1396927254575707,
-              "p99_ms": 0.809302
+              "mean_ms": 0.15171710476512337,
+              "p99_ms": 0.8491282
             },
             "CONGA": {
-              "mean_ms": 0.2760358169717138,
-              "p99_ms": 1.153186
+              "mean_ms": 0.32437323589050354,
+              "p99_ms": 1.3656091399999999
             }
           }
         },
         {
           "lower_exclusive_bytes": 500000,
           "upper_inclusive_bytes": 750000,
-          "n": 534,
+          "counts": {
+            "DuoGran": 534,
+            "ConWeave": 5510,
+            "CONGA": 5510
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.35302388014981273,
               "p99_ms": 0.8742529299999995
             },
             "ConWeave": {
-              "mean_ms": 0.3589091647940075,
-              "p99_ms": 0.92260738
+              "mean_ms": 0.3960263569872958,
+              "p99_ms": 1.16919651
             },
             "CONGA": {
-              "mean_ms": 0.5820807602996254,
-              "p99_ms": 1.3671539999999989
+              "mean_ms": 0.665337639201452,
+              "p99_ms": 1.8154360799999996
             }
           }
         },
         {
           "lower_exclusive_bytes": 750000,
           "upper_inclusive_bytes": 1000000,
-          "n": 575,
+          "counts": {
+            "DuoGran": 575,
+            "ConWeave": 5590,
+            "CONGA": 5590
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.5346034017391306,
               "p99_ms": 1.0797413999999999
             },
             "ConWeave": {
-              "mean_ms": 0.5684571965217391,
-              "p99_ms": 1.2327295399999996
+              "mean_ms": 0.5828334660107335,
+              "p99_ms": 1.3831209899999992
             },
             "CONGA": {
-              "mean_ms": 0.8031823513043479,
-              "p99_ms": 2.0154617399999997
+              "mean_ms": 0.9248663590339893,
+              "p99_ms": 2.55938325
             }
           }
         },
         {
           "lower_exclusive_bytes": 1000000,
           "upper_inclusive_bytes": 1500000,
-          "n": 1081,
+          "counts": {
+            "DuoGran": 1081,
+            "ConWeave": 11151,
+            "CONGA": 11151
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.7033873506012951,
               "p99_ms": 1.4985270000000004
             },
             "ConWeave": {
-              "mean_ms": 0.7417754005550417,
-              "p99_ms": 1.6503542000000024
+              "mean_ms": 0.7841600249304995,
+              "p99_ms": 1.868193
             },
             "CONGA": {
-              "mean_ms": 1.1351313182238667,
-              "p99_ms": 2.837657600000004
+              "mean_ms": 1.2975191519146263,
+              "p99_ms": 3.556432
             }
           }
         },
         {
           "lower_exclusive_bytes": 1500000,
           "upper_inclusive_bytes": 2000000,
-          "n": 1122,
+          "counts": {
+            "DuoGran": 1122,
+            "ConWeave": 11144,
+            "CONGA": 11144
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.9452137415329768,
               "p99_ms": 1.880112319999998
             },
             "ConWeave": {
-              "mean_ms": 0.9997487531194296,
-              "p99_ms": 1.9983592499999991
+              "mean_ms": 1.0916997561019384,
+              "p99_ms": 2.5941062899999987
             },
             "CONGA": {
-              "mean_ms": 1.5970404928698754,
-              "p99_ms": 3.575807679999999
+              "mean_ms": 1.8558845927853553,
+              "p99_ms": 5.291197969999999
             }
           }
         }
@@ -334,173 +386,361 @@
     "Meta Hadoop": {
       "inputs": {
         "DuoGran": {
-          "path": "/home/hongw/Desktop/ns-allinone-3.19/prolet/output/duogran-default-subflow-20261019/hadoop/ewma_q/run_out_fct.txt",
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/MetaHadoop/DuoGran/output-duogran-owl-admission-20261020-hadoop-before-96bf77b0/artifacts/run_out_fct.txt",
           "sha256": "4529bcab34ec0282d5da362f4989c2fcc476d82dbda6e213554ac170c5b46668",
+          "archive_record": "runs/MetaHadoop/DuoGran/output-duogran-owl-admission-20261020-hadoop-before-96bf77b0/record.json",
+          "input_sha256": "023edcd77e94d204f8d5f2f1872c61ce2c658e9ef5a315bebaa7a55d05435b4a",
+          "arrival_window_ms": 10,
+          "network_load_percent": 80,
           "flow_count": 52469,
           "mean_ms": 0.07045497295545942,
           "p99_ms": 1.4944479599999996
         },
-        "ConWeave": null,
-        "CONGA": null
+        "ConWeave": {
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/MetaHadoop/ConWeave/reports-matrix-cdf-100ms-20261029-conweave-metahadoop-70a92184/artifacts/fct.txt",
+          "sha256": "55150c2f4e6a711d4c8e2c430ba1309b857381224884529eee2546ba7460992f",
+          "archive_record": "runs/MetaHadoop/ConWeave/reports-matrix-cdf-100ms-20261029-conweave-metahadoop-70a92184/record.json",
+          "input_sha256": "9e6e7e4814a554fc917bddc504b609e7c95f9504f6b2626becc0fb1f8fc2a02e",
+          "arrival_window_ms": 100,
+          "network_load_percent": 80,
+          "flow_count": 525310,
+          "mean_ms": 0.0783874183910453,
+          "p99_ms": 1.6087532299999885
+        },
+        "CONGA": {
+          "path": "/home/hola/Desktop/ns-allinone-3.19/prolet-experiment-logs/runs/MetaHadoop/CONGA/reports-matrix-cdf-100ms-20261029-conga-metahadoop-5caf6ceb/artifacts/fct.txt",
+          "sha256": "96181e5f2b8330718657505d3686cda6395318e213106c65422b0d58eb8fe10f",
+          "archive_record": "runs/MetaHadoop/CONGA/reports-matrix-cdf-100ms-20261029-conga-metahadoop-5caf6ceb/record.json",
+          "input_sha256": "9e6e7e4814a554fc917bddc504b609e7c95f9504f6b2626becc0fb1f8fc2a02e",
+          "arrival_window_ms": 100,
+          "network_load_percent": 80,
+          "flow_count": 525310,
+          "mean_ms": 0.14017641524052465,
+          "p99_ms": 2.4319134699999996
+        }
       },
       "bins": [
         {
           "lower_exclusive_bytes": 0,
           "upper_inclusive_bytes": 1000,
-          "n": 31773,
+          "counts": {
+            "DuoGran": 31773,
+            "ConWeave": 318428,
+            "CONGA": 318428
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.015008797689862463,
               "p99_ms": 0.06538787999999995
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.01861158426708706,
+              "p99_ms": 0.08037172999999997
+            },
+            "CONGA": {
+              "mean_ms": 0.024308510033665378,
+              "p99_ms": 0.13585884999999914
+            }
           }
         },
         {
           "lower_exclusive_bytes": 1000,
           "upper_inclusive_bytes": 2000,
-          "n": 3384,
+          "counts": {
+            "DuoGran": 3384,
+            "ConWeave": 35006,
+            "CONGA": 35006
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.015548591312056739,
               "p99_ms": 0.06860793000000015
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.018987482602982345,
+              "p99_ms": 0.08151169999999992
+            },
+            "CONGA": {
+              "mean_ms": 0.024867276409758325,
+              "p99_ms": 0.1377888
+            }
           }
         },
         {
           "lower_exclusive_bytes": 2000,
           "upper_inclusive_bytes": 5000,
-          "n": 1046,
+          "counts": {
+            "DuoGran": 1046,
+            "ConWeave": 10581,
+            "CONGA": 10581
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.016132364244741872,
               "p99_ms": 0.06663524999999998
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.019376607220489554,
+              "p99_ms": 0.07970620000000005
+            },
+            "CONGA": {
+              "mean_ms": 0.02506891153955203,
+              "p99_ms": 0.13497360000000042
+            }
           }
         },
         {
           "lower_exclusive_bytes": 5000,
           "upper_inclusive_bytes": 10000,
-          "n": 962,
+          "counts": {
+            "DuoGran": 962,
+            "ConWeave": 9456,
+            "CONGA": 9456
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.01714480561330561,
               "p99_ms": 0.07219620999999998
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.019975025592216582,
+              "p99_ms": 0.0813165500000001
+            },
+            "CONGA": {
+              "mean_ms": 0.025621816835871405,
+              "p99_ms": 0.13556990000000013
+            }
           }
         },
         {
           "lower_exclusive_bytes": 10000,
           "upper_inclusive_bytes": 20000,
-          "n": 328,
+          "counts": {
+            "DuoGran": 328,
+            "ConWeave": 3368,
+            "CONGA": 3368
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.017848161585365854,
               "p99_ms": 0.05831403
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.02272057690023753,
+              "p99_ms": 0.08496944999999999
+            },
+            "CONGA": {
+              "mean_ms": 0.02833555581947743,
+              "p99_ms": 0.14342248999999993
+            }
           }
         },
         {
           "lower_exclusive_bytes": 20000,
           "upper_inclusive_bytes": 50000,
-          "n": 4826,
+          "counts": {
+            "DuoGran": 4826,
+            "ConWeave": 46911,
+            "CONGA": 46911
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.024752493990882717,
               "p99_ms": 0.0762285
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.029593192513482983,
+              "p99_ms": 0.09780080000000016
+            },
+            "CONGA": {
+              "mean_ms": 0.035732380571720915,
+              "p99_ms": 0.15491700000000017
+            }
           }
         },
         {
           "lower_exclusive_bytes": 50000,
           "upper_inclusive_bytes": 100000,
-          "n": 4242,
+          "counts": {
+            "DuoGran": 4242,
+            "ConWeave": 42451,
+            "CONGA": 42451
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.031686994578029225,
               "p99_ms": 0.08735315
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.03683952392169796,
+              "p99_ms": 0.10847699999999999
+            },
+            "CONGA": {
+              "mean_ms": 0.04347689199312148,
+              "p99_ms": 0.168317
+            }
           }
         },
         {
           "lower_exclusive_bytes": 100000,
           "upper_inclusive_bytes": 250000,
-          "n": 3119,
+          "counts": {
+            "DuoGran": 3119,
+            "ConWeave": 31039,
+            "CONGA": 31039
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.0516270141070856,
               "p99_ms": 0.13825080000000015
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.05740863323560682,
+              "p99_ms": 0.16317481999999983
+            },
+            "CONGA": {
+              "mean_ms": 0.07089021350558973,
+              "p99_ms": 0.36646861999999947
+            }
           }
         },
         {
           "lower_exclusive_bytes": 250000,
           "upper_inclusive_bytes": 1000000,
-          "n": 1373,
+          "counts": {
+            "DuoGran": 1373,
+            "ConWeave": 13910,
+            "CONGA": 13910
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.21666859941733432,
               "p99_ms": 0.93535936
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.22622925880661393,
+              "p99_ms": 0.9482827199999999
+            },
+            "CONGA": {
+              "mean_ms": 0.3259061679367362,
+              "p99_ms": 1.2211634399999998
+            }
           }
         },
         {
           "lower_exclusive_bytes": 1000000,
           "upper_inclusive_bytes": 2000000,
-          "n": 616,
+          "counts": {
+            "DuoGran": 616,
+            "ConWeave": 6186,
+            "CONGA": 6186
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 0.7699950616883117,
               "p99_ms": 1.6455011000000008
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 0.8360256540575493,
+              "p99_ms": 1.93347705
+            },
+            "CONGA": {
+              "mean_ms": 1.2121135035564177,
+              "p99_ms": 3.058997849999999
+            }
           }
         },
         {
           "lower_exclusive_bytes": 2000000,
           "upper_inclusive_bytes": 4000000,
-          "n": 402,
+          "counts": {
+            "DuoGran": 402,
+            "ConWeave": 3894,
+            "CONGA": 3894
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 1.3622027611940297,
               "p99_ms": 3.1988170000000014
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 1.459900012840267,
+              "p99_ms": 3.47108775
+            },
+            "CONGA": {
+              "mean_ms": 2.356059608628659,
+              "p99_ms": 7.085046570000005
+            }
           }
         },
         {
           "lower_exclusive_bytes": 4000000,
           "upper_inclusive_bytes": 10000000,
-          "n": 398,
+          "counts": {
+            "DuoGran": 398,
+            "ConWeave": 4080,
+            "CONGA": 4080
+          },
           "statistics": {
             "DuoGran": {
               "mean_ms": 3.501719050251257,
               "p99_ms": 10.654237829999996
             },
-            "ConWeave": null,
-            "CONGA": null
+            "ConWeave": {
+              "mean_ms": 3.7693031791666667,
+              "p99_ms": 11.245810100000002
+            },
+            "CONGA": {
+              "mean_ms": 9.189672731617646,
+              "p99_ms": 41.30936452
+            }
           }
         }
       ]
+    }
+  },
+  "metahadoop_y_transform": {
+    "formula": "f(y)=y for y<=k; f(y)=k+s*ln(1+(y-k)/s) for y>k; y in microseconds",
+    "normalization": "The upper branch has unit slope at the knee, then compresses progressively; ConWeave has at least 5% displayed vertical headroom.",
+    "all_measured_values_visible": false,
+    "clipping": "ConWeave and DuoGran are entirely inside the axes. CONGA may exceed the upper boundary; raw statistics are unchanged.",
+    "clipped_points": [
+      {
+        "scheme": "CONGA",
+        "metric": "mean_ms",
+        "bin_upper_bytes": 10000000,
+        "value_us": 9189.672731617646
+      },
+      {
+        "scheme": "CONGA",
+        "metric": "p99_ms",
+        "bin_upper_bytes": 10000000,
+        "value_us": 41309.36452
+      }
+    ],
+    "average": {
+      "k": 20.0,
+      "s": 1.5,
+      "A": 1.5,
+      "limits_us": [
+        10.0,
+        8500.0
+      ],
+      "low_range_height_fraction": 0.43553501934408273,
+      "slope_at_knee": 1.0,
+      "conweave_top_margin_fraction": 0.05330408504491969
+    },
+    "p99": {
+      "k": 100.0,
+      "s": 4.0,
+      "A": 4.0,
+      "limits_us": [
+        40.0,
+        40000.0
+      ],
+      "low_range_height_fraction": 0.6196314745042705,
+      "slope_at_knee": 1.0,
+      "conweave_top_margin_fraction": 0.05267091026620631
     }
   }
 }

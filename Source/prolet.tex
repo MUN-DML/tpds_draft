@@ -401,13 +401,13 @@ The per-flow table records the selected path and last packet-arrival time, with 
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/workload_fct_comparison.pdf}
-    \caption{Average and P99 FCT under AliStorage (a, b) and Meta Hadoop (c, d) on Spine--Leaf-128 at 80\% load with 10-ms traffic injection. Horizontal axes are logarithmic. AliStorage y-axes are linear below 30~$\mu$s in (a) and 120~$\mu$s in (b), with logarithmic compression above; ticks show actual FCT values. CONGA tails exceeding the displayed limits are clipped. Meta Hadoop uses logarithmic FCT axes. Ticks denote bin upper bounds; 1 KB equals $10^3$ bytes. Statistics use all completed flows. Meta Hadoop baseline measurements remain unavailable.}
+    \caption{Average and P99 FCT for DuoGran, ConWeave, and CONGA under AliStorage (a, b) and Meta Hadoop (c, d) on Spine--Leaf-128 at 80\% load with a 4,096-byte packet payload. Horizontal axes are logarithmic. For both workloads, y-axes use a linear lower range and progressively logarithmic compression above workload-specific thresholds; ticks show actual FCT values. ConWeave curves are fully displayed; CONGA tails exceeding the axis limits are clipped. Ticks denote bin upper bounds; 1 KB equals $10^3$ bytes. Statistics include every completed flow and the drain period.}
     \label{fig:FCT_large_top}
 \end{figure*}
 
 \section{Performance Evaluation}
 \noindent
-\textbf{Draft evaluation status:} Figure~\ref{fig:FCT_large_top} reports the revised DuoGran design and available baseline FCT results; the Meta Hadoop baseline comparison remains incomplete. Sections~\ref{sec:subflow_fct_ablation} and~\ref{sec:dst_buffer_occupancy} separately report a preliminary FCT ablation and a buffering experiment with the current DuoGran extension. A full evaluation of the revised design remains necessary before general performance gains can be claimed.
+\textbf{Draft evaluation status:} Figure~\ref{fig:FCT_large_top} reports complete, matched 100-ms FCT measurements for ConWeave and CONGA under both storage workloads and retains the previously plotted DuoGran results. Updated DuoGran measurements with the same input traces and settings as the baselines remain to be collected. Sections~\ref{sec:subflow_fct_ablation} and~\ref{sec:dst_buffer_occupancy} separately report a preliminary FCT ablation and a buffering experiment with the current DuoGran extension. A full evaluation of the revised design remains necessary before general performance gains can be claimed.
 
 
 \subsection{Simulation Setup} 
@@ -417,7 +417,7 @@ The evaluation framework uses NS-3~\cite{ns3} and builds upon the open-source Co
 \textbf{Congestion control:} We employ DCQCN as the default congestion control algorithm since the commercial RNIC for lossless by default support it. All the parameters align with the open-sourced implementation in ConWeave.
 
 \noindent
-\textbf{Baselines and parameter tuning:} To evaluate DuoGran, we compare it against flow-based ECMP, flowlet-based LetFlow and CONGA, and subflow-based ConWeave. Following the sensitivity analysis in ConWeave, we set the static timeout for CONGA and LetFlow to 100 $\mu$s for optimal FCT performance. The retained experiments used a 1,000-byte packet payload setting. The current simulator defaults to a 4,096-byte payload; revised comparisons must use the same setting across schemes and report payload size separately from the complete wire-frame size.
+\textbf{Baselines and parameter tuning:} To evaluate DuoGran, we compare it against flow-based ECMP, flowlet-based LetFlow and CONGA, and subflow-based ConWeave. Following the sensitivity analysis in ConWeave, we set the static timeout for CONGA and LetFlow to 100 $\mu$s for optimal FCT performance. The complete 100-ms ConWeave and CONGA measurements in Fig.~\ref{fig:FCT_large_top} use the same 4,096-byte packet payload. Payload size is reported separately from the complete wire-frame size.
 
 \noindent
 \textbf{Network topology:} We evaluate DuoGran using two network topologies with $100\,\mathrm{Gbps}$ links and $1~\mu\mathrm{s}$ delay. The first is a three-tier Fat-Tree with four pods, connecting 32 servers with a $2{:}1$ oversubscription ratio and four equal-cost paths. The second is a two-tier Spine--Leaf connecting 128 servers ($16$ per rack) through an $8 \times 8$ switch fabric.
@@ -472,7 +472,7 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
 
 
 \noindent
-\textbf{Average and P99 FCT:} Figure~\ref{fig:FCT_large_top} compares DuoGran, ConWeave, and CONGA under AliStorage and Meta Hadoop. The AliStorage curves use the same 156,777 flows across all three schemes. For Meta Hadoop, the available DuoGran results cover 52,469 flows; corresponding ConWeave and CONGA measurements remain to be collected.
+\textbf{Average and P99 FCT:} Figure~\ref{fig:FCT_large_top} shows DuoGran, ConWeave, and CONGA. The new ConWeave and CONGA curves use the same input trace within each workload: 1,567,425 AliStorage flows and 525,310 Meta Hadoop flows. Both experiments use 100-ms traffic injection at 80\% network load, seed~1, and a 4,096-byte packet payload; all offered flows complete, including the drain period. Each baseline bin uses identical flow identities and ideal FCTs across ConWeave and CONGA, and its P99 is computed from the individual flow FCTs. The original DuoGran curves are retained from the earlier 156,777-flow AliStorage and 52,469-flow Meta Hadoop experiments; their per-bin statistics use their own flow cohorts. Updated paired DuoGran measurements remain pending.
 
 
 
