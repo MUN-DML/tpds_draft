@@ -1,4 +1,4 @@
-# Track manuscript build inputs and the requested figure-generation sources.
+# Track manuscript source and figure build inputs; plotting code lives in prolet/analysis.
 /*
 !/.gitignore
 !/README.md
@@ -20,11 +20,3 @@
 !/Source/figures/dst_reordering_buffer_cdf.pdf
 !/Source/figures/duogran_gap_sensitivity.pdf
 !/Source/figures/workload_fct_comparison.pdf
-!/research/
-/research/*
-!/research/figures/
-/research/figures/*
-!/research/figures/fig5_workload_comparison/
-/research/figures/fig5_workload_comparison/*
-!/research/figures/fig5_workload_comparison/plot_fig5.py
-!/research/figures/fig5_workload_comparison/plot_data.json

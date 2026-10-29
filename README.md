@@ -16,12 +16,23 @@ The repository includes the main manuscript (`Source/prolet.tex`), bibliography 
 
 ## Figure 5 generation
 
-The generator is `research/figures/fig5_workload_comparison/plot_fig5.py`; `plot_data.json` in the same directory records the plotted statistics, input hashes, bin definitions, axis transformation, and clipped points. It is a statistics snapshot, not an input consumed by the generator.
+Plotting code and derived data are managed in the separate prolet code repository:
 
-With NumPy and Matplotlib installed, run:
+- `prolet/analysis/plot_workload_fct.py`
+- `prolet/analysis/figure_data/fig5_workload_fct.json`
+- `prolet/analysis/README_paper_figures.md`
+
+This manuscript repository keeps the generated `Source/figures/workload_fct_comparison.pdf` and the article text. It does not keep a duplicate plot generator or statistics snapshot.
+
+With NumPy and Matplotlib installed, run from the prolet checkout:
 
 ```bash
-python3 research/figures/fig5_workload_comparison/plot_fig5.py
+python3 analysis/plot_workload_fct.py \
+  --archive ../prolet-experiment-logs \
+  --output output/paper-fig5
+cp output/paper-fig5/workload_fct_comparison.pdf /path/to/TPDS/Source/figures/
 ```
 
-The script reads pinned records from the independent local `prolet-experiment-logs` archive. Set `PROLET_LOG_ARCHIVE` to its root on another machine. Raw FCT files are not included in this manuscript repository. It verifies input and FCT hashes, 128-host/80%/100-ms configurations, identical baseline flow identities and ideal FCTs, and complete per-scheme size-bin coverage. It regenerates the statistics snapshot, previews, and `Source/figures/workload_fct_comparison.pdf`. Both workloads include complete ConWeave and CONGA measurements. The original DuoGran curves are retained from archived raw logs whose SHA-256 hashes match the original plotted inputs exactly. Baseline curves use paired 100-ms inputs, whereas DuoGran retains its original 10-ms input and independent per-bin cohort; each duration and count is explicit in `plot_data.json`. Both AliStorage and Meta Hadoop use a linear lower range and a progressively logarithmic upper range with matching slopes at the transition. Workload-specific scales emphasize low and middle ranges to separate the curves. All ConWeave curves are fully visible with at least 5% vertical headroom for endpoint markers, and DuoGran is fully visible. CONGA points exceeding the displayed limits are clipped and recorded in `plot_data.json`; raw statistics remain unchanged.
+The generator verifies raw-input/FCT hashes, paired baseline flow identities and ideal FCTs, and complete per-scheme size-bin coverage. Its output directory contains the PDF, PNG preview and regenerated `plot_data.json`. Updating the manuscript figure is an explicit copy; the script does not modify this repository automatically.
+
+ConWeave and CONGA use complete paired 100-ms inputs. DuoGran retains the original 10-ms curves; flow cohorts, hashes, axis transformations and clipped points are recorded in the prolet statistics snapshot. Both workloads use a linear lower range and progressive upper-range compression, with all ConWeave curves fully visible.
