@@ -373,7 +373,14 @@ An ordinary flowlet switch outside an active handoff does not initiate destinati
 \subsection{Implementation and Overhead Analysis}
 \label{sec:implementation}
 \noindent
-\textbf{Source routing.} The source ToR encodes the selected route in a path identifier carried by the packet. Intermediate switches use this identifier and the hop index to forward the packet along the specified path. The NS-3 implementation uses packet tags to represent routing and measurement metadata; a hardware implementation requires a corresponding packet-header format.
+\textbf{Source routing.} In a Clos-based topology, a host is connected to exactly one ToR. DuoGran offloads path selection to the source ToR, which determines the route between ToR pairs and maintains candidate paths. Upon selection, a \textit{PathID} is recorded in the Base Transport Header (BTH). The forwarding depends on SRv6-based \cite{srv6} source routing schemes such as MRC. Intermediate switches forward packets according to routes encoded in the packet header, ensuring traffic remains pinned to the designated path.
+
+\noindent
+\textbf{Header format:} DuoGran ensures no additional transmission overhead by repurposing standard RoCEv2 header fields for routing.
+\begin{enumerate*}[label=(\roman*)]
+	\item \textbf{flagging (1 bit):} Located in the IP header, these bits classify traffic as mice or elephant flows. This allows source ToRs to instantly identify flow types using a field universally supported by modern network fabrics.
+	\item \textbf{PathID (8 bits):} DuoGran encodes end-to-end paths between ToR pairs by repurposing eight reserved bits in the BTH. This field allows each source ToR to address up to 255 distinct paths. To support more available paths, source routing mechanisms such as SRv6 \cite{srv6} can be utilized instead.
+\end{enumerate*}
 
 \noindent
 \textbf{Shared state:} Each source ToR stores one path table per destination ToR. A dense array holds each path's measurement and control state once. Internal nodes of an implicit binary tree summarize the lowest available OWL and its path, available-path count, and earliest probe-eligible time. Only Unknown paths with no pending measurement are eligible for exploration. Expiration of an invalid interval makes a path Unknown but does not automatically restore its availability.
