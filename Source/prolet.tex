@@ -404,7 +404,7 @@ The per-flow table records the selected path and last packet-arrival time, with 
 \begin{figure*}[t]
     \centering
     \includegraphics[width=\textwidth]{figures/workload_fct_comparison.pdf}
-    \caption{Average and P99 FCT for DuoGran, ConWeave, and CONGA under AliStorage (a, b) and Meta Hadoop (c, d) on Spine--Leaf-128 at 80\% load with a 4,096-byte packet payload. Horizontal axes are logarithmic. For both workloads, y-axes use a linear lower range and progressively logarithmic compression above workload-specific thresholds; ticks show actual FCT values. ConWeave curves are fully displayed; CONGA tails exceeding the axis limits are clipped. Ticks denote bin upper bounds; 1 KB equals $10^3$ bytes. Statistics include every completed flow and the drain period.}
+    \caption{Average and P99 FCT for DuoGran, ConWeave, and CONGA under AliStorage (a, b) and Meta Hadoop (c, d) on Spine--Leaf-128 at 80\% load with a 4,096-byte packet payload. Horizontal axes are logarithmic. For both workloads, y-axes use a linear lower range and smooth nonlinear compression above workload-specific thresholds; ticks show actual FCT values. ConWeave curves are fully displayed; CONGA tails exceeding the axis limits are clipped. Ticks denote bin upper bounds; 1 KB equals $10^3$ bytes. Statistics include every completed flow and the drain period.}
     \label{fig:FCT_large_top}
 \end{figure*}
 
