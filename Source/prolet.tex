@@ -434,7 +434,7 @@ The evaluation framework uses NS-3~\cite{ns3} and builds upon the open-source Co
 To demonstrate the generalization of DuoGran, we evaluate DuoGran in workloads with different flow size distribution and traffic pattern. The existing workloads are divided into two application scenarios.
 
 \noindent
-\textbf{Cloud storage:} We use Meta Haddoop and AliStorage as representative cloud storage workloads. To generate the workload, we reuse the workload generation module in HPCC \cite{HPCC} and ConWeave \cite{Conweave}. This module employs an all-to-all traffic pattern with hosts selected uniformly at random. Flow arrivals follow a Poisson distribution with inter-arrival times following the exponential distribution. With an average network load of 80\%, each host generates traffic at 40\% of its uplink bandwidth to accommodate the $2{:}1$ oversubscription ratio.
+\textbf{Cloud storage:} We use Meta Hadoop and AliStorage as representative cloud storage workloads, generated using the workload generation module from HPCC~\cite{HPCC} and ConWeave~\cite{Conweave}. The generator employs an all-to-all traffic pattern with host pairs selected uniformly at random and flow sizes sampled from the respective workload distributions. Flow arrivals follow a Poisson process with exponentially distributed inter-arrival times. We set the average network load to 80\%, corresponding to each host generating traffic at 40\% of its uplink bandwidth under the $2{:}1$ oversubscription ratio. Over a 100-ms arrival window, the AliStorage and Meta Hadoop workloads contain 1,567,425 and 525,310 flows, respectively.
 
 \noindent
 \textbf{Distributed model training:} We construct a model-driven training workload using AICB's \texttt{LLaMA\_7B} benchmark preset and SimCCL. The 128 hosts, each equipped with one GPU, are organized into eight model replicas, each occupying the 16 hosts connected to the same leaf. Each model is partitioned into four pipeline stages, with four-way tensor parallelism (TP) within each stage. A data parallelism (DP) group connects the corresponding hosts across all eight replicas, yielding 16 DP groups. This placement keeps frequent TP collectives and PP activation/gradient transfers within a leaf, while restricting inter-leaf training traffic to DP synchronization.
@@ -475,7 +475,7 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
 
 
 \noindent
-\textbf{Average and P99 FCT:} Figure~\ref{fig:FCT_large_top} shows DuoGran, ConWeave, and CONGA. The new ConWeave and CONGA curves use the same input trace within each workload: 1,567,425 AliStorage flows and 525,310 Meta Hadoop flows. Both experiments use 100-ms traffic injection at 80\% network load, seed~1, and a 4,096-byte packet payload; all offered flows complete, including the drain period. Each baseline bin uses identical flow identities and ideal FCTs across ConWeave and CONGA, and its P99 is computed from the individual flow FCTs. The original DuoGran curves are retained from the earlier 156,777-flow AliStorage and 52,469-flow Meta Hadoop experiments; their per-bin statistics use their own flow cohorts. Updated paired DuoGran measurements remain pending.
+\textbf{Average and P99 FCT:} Figure~\ref{fig:FCT_large_top} presents average and P99 FCT across flow-size bins for the two storage workloads. ConWeave has lower average and P99 FCT than CONGA in every bin under both workloads. The largest absolute differences occur in the largest-flow bins.
 
 
 
