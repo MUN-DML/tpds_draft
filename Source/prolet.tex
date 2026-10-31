@@ -256,13 +256,13 @@ The first measurement uses zero rate; an equal-time sample retains the previous 
 \textbf{Congestion feedback and timeout handling.} \texttt{ECN\_REPLY} explicitly reports congestion, whereas an \texttt{OWL\_REPLY} timeout can indicate potential congestion even before explicit congestion feedback arrives. When an arriving data packet carries a CE mark, the destination ToR generates a separate \texttt{ECN\_REPLY} control packet, copies the forward-path identifier from the data packet, and sends the reply back to the original source ToR. The source ToR uses this identifier to mark the affected path Invalid. If \texttt{OWL\_REPLY} does not arrive before $d_i^{\mathrm{exp}}$, the source ToR also marks the path Invalid.
 
 \noindent
-\textbf{Path-state management.} Each path is classified as Available, Invalid, or Unknown. All paths are initially Available, allowing transmission before measurements have been collected. Available denotes eligibility for selection rather than guaranteed congestion-free forwarding. Congestion feedback or a reply timeout makes the path Invalid for an interval $d_i^{\mathrm{unav}}$. When this interval expires, the path transitions to Unknown because elapsed time alone does not establish that congestion has subsided. A timely, non-congested measurement initiated after the invalid interval restores the path to Available; congestion feedback or another reply timeout returns it to Invalid.
+\textbf{Path-state management.} Each path is classified as Available, Invalid, or Unknown. Paths initially have no OWL sample and are Unknown; new-flow exploration permits forwarding before measurements are available. Available denotes eligibility for measured-path selection rather than guaranteed congestion-free forwarding. Congestion feedback or a reply timeout makes the path Invalid and sets an exploration cooldown $d_i^{\mathrm{unav}}$. After this interval, the path is Unknown unless a timely matching reply has restored it. A timely matching \texttt{OWL\_REPLY} can restore Available status even during cooldown or after an intervening \texttt{ECN\_REPLY}; a subsequent congestion notification can invalidate it again. The cooldown restricts exploration, not reply-based restoration.
 
 \noindent
 \textbf{Shared path admission.} To reduce closely spaced assignments of multiple flows to the same path, DuoGran applies a shared admission interval, $\tau_{\mathrm{adm}}$. For each destination ToR and path $i$, the source ToR maintains the next permitted admission time $e_i$, initially zero. Whenever a new flow is assigned to this path, or an existing flow switches to it through ordinary flowlet rerouting or protected subflow rerouting, the source ToR sets $e_i \leftarrow t+\tau_{\mathrm{adm}}$, where $t$ is the current time. Subsequent admissions normally require $t\geq e_i$, alongside the respective path-selection conditions. Packets continuing on their current path and probe replies do not update $e_i$. This restriction is independent of path availability and does not interrupt existing traffic. If no candidate qualifies, an existing flow retains its current path. A new flow instead uses the fallback policy to begin forwarding, which may bypass the interval but still updates $e_i$.
 
 \noindent
-\textbf{Exploration-first selection.} For a new connection, DuoGran uses a per-destination ToR cursor to select a probe-eligible path in round-robin order; the cursor can be stored in a P4 register. A path $i$ is eligible when $\mathrm{iswaiting}_i=0$, its invalidation interval $d_i^{\mathrm{unav}}$ has expired, and it satisfies the admission interval. The connection's first packet serves as the flagged probe, allowing transmission to begin while measuring the selected path. This policy applies only to initial path assignment; subsequent path changes follow the dynamic flowlet and protected subflow rerouting policies described below.
+\textbf{Initial path selection.} The procedure \textsc{SelectInitialPath} implements the following policy. For a new connection, DuoGran uses a per-destination ToR cursor to select a probe-eligible path in round-robin order; the cursor can be stored in a P4 register. A path $i$ is eligible when $\mathrm{iswaiting}_i=0$, its invalidation interval $d_i^{\mathrm{unav}}$ has expired, and it satisfies the admission interval. The connection's first packet serves as the flagged probe, allowing transmission to begin while measuring the selected path. This policy applies only to initial path assignment; subsequent path changes follow the dynamic flowlet and protected subflow rerouting policies described below. If no exploration candidate qualifies, the source selects the lowest-OWL Available path satisfying $t\geq e_i$. If none qualifies, a new flow uses the least recently admitted Available path, prioritizing paths never admitted; when no measured Available path exists, it applies the same fallback over all topology paths. This fallback may bypass the interval, but still updates $e_i$. A packet assigned to a path with a pending measurement reuses that measurement rather than overwriting its timestamp.
 
 \noindent
 \textbf{Clock offsets.} DuoGran compares paths between the same source--destination ToR pair. A constant clock offset adds the same bias to their OWL measurements, preserving path ranking and cancelling in the delay difference between the current and candidate paths. It also cancels between consecutive measurements when computing latency changes. These calculations therefore tolerate a fixed clock offset, provided that it remains stable over the relevant measurement interval. Time-varying offsets can affect the estimates.
@@ -271,12 +271,12 @@ The first measurement uses zero rate; an equal-time sample retains the previous 
 \label{sec:dynamic_timeout}
 As discussed in Sec.~\ref{sec:pfc_gaps}, PFC can create inter-packet arrival gaps across pause boundaries. DuoGran exploits these existing gaps by adapting the flowlet timeout to the current and candidate paths. The timeout combines their measured delay difference, a directional EWMA protection term, and a bounded local-queue correction to limit packet-reordering risk.
 
-Let $A_{s,d}$ denote the set of Available paths with OWL measurements between source ToR $s$ and destination ToR $d$. For an existing flow entry, let $c$ denote its current path and $g$ the interval since its previous packet arrived at the source ToR. If rerouting is disabled, the flow keeps $c$. Otherwise, the only candidate is
+Let $A_{s,d}$ denote the set of Available paths with OWL measurements between source ToR $s$ and destination ToR $d$. For an existing flow entry, let $c$ denote its current path and $g$ the interval since its previous packet arrived at the source ToR. If rerouting is disabled, the flow keeps $c$. The ordinary branch first checks the lowest-OWL Available path,
 \begin{equation}
     b = \arg\min_{i\in A_{s,d}} L_i.
     \label{eq:best_path}
 \end{equation}
-Equal-OWL ties use the path identifier in the current implementation. If there is no available candidate, $b=c$, or the current path has no OWL measurement, the packet stays on $c$. Candidate ranking uses the latest OWL, not a predicted OWL. The policy does not scan other available paths if $b$ fails a rerouting check.
+Equal-OWL ties use the path identifier in the current implementation. If there is no Available candidate, $b=c$, or the current path has no OWL measurement, the ordinary branch cannot admit a change. Candidate ranking uses the latest OWL, not a predicted OWL. When $b$ passes the ordinary gain and timeout checks but is blocked by shared admission, the source can consider another Available path; every alternative must independently satisfy those checks and its admission interval.
 
 \noindent
 \textbf{Predicted improvement:} Let $H_{s,d}$ be a configured prediction horizon, defaulting to the destination's base RTT. The estimated improvement from switching is
@@ -315,7 +315,7 @@ The weight and cap limit the added margin because the OWL sample may already ref
     \end{aligned}
     \label{eq:pair_timeout}
 \end{equation}
-where $T_{\mathrm{floor}}=M=1~\mu\mathrm{s}$, and $\lceil\cdot\rceil_{\mathrm{ns}}$ rounds upward to whole nanoseconds. The queue correction is added after applying the minimum gap. Ordinary flowlet rerouting requires both $I_{c,b}>I_{\min}$ and $g>T_{c,b}$. It is also blocked while the current local egress queue is PFC-paused. If the ordinary branch rejects a change, the source may still evaluate the protected early-rerouting conditions in Sec.~\ref{sec:selective_handoff}. The flow retains $c$ when neither branch admits a change.
+where $T_{\mathrm{floor}}=M=1~\mu\mathrm{s}$, and $\lceil\cdot\rceil_{\mathrm{ns}}$ rounds upward to whole nanoseconds. The queue correction is added after applying the minimum gap. Ordinary flowlet rerouting requires both $I_{c,b}>I_{\min}$ and $g>T_{c,b}$. It is also blocked while the current local egress queue is PFC-paused. If the ordinary branch rejects a change, the source may still evaluate the protected early-rerouting conditions in Sec.~\ref{sec:selective_handoff}. The flow retains $c$ when neither branch admits a change. The procedure \textsc{FlowletTarget}$(c,g,t)$ summarizes these ordinary checks. It returns $b$ when all ordinary conditions hold and $t\geq e_b$. If the ordinary conditions hold for $b$ but its admission interval has not elapsed, it returns the lowest-OWL alternative $i\neq c$ satisfying $I_{c,i}>I_{\min}$, $g>T_{c,i}$, and $t\geq e_i$. Otherwise it returns $\textsc{None}$, allowing the early branch to be considered.
 
 The ordinary conditions apply whether $c$ is Available or Invalid; path invalidity and a local PFC pause are distinct states. An invalid current path is excluded from candidate selection, but its retained measurements still describe the path used by earlier packets. After every packet, the flow's last-arrival time is updated. A successful ordinary path change begins the next flowlet.
 
@@ -327,7 +327,7 @@ The timeout is calculated on demand from shared path state. OWL measurements, ra
 Although dynamic per-connection timeouts exploit PFC-induced arrival gaps, ordinary flowlet switching still requires the gap to exceed the timeout derived from the current and candidate paths. As shown in Figure~\ref{fig:conga_offline_opportunities}, congestion can increase their OWL difference without a corresponding increase in arrival gaps, leaving fewer opportunities for order-preserving switching. DuoGran therefore selectively enables protected subflow rerouting to move traffic away from congested paths when the available gap is insufficient for ordinary flowlet switching.
 
 \noindent
-\textbf{Early-rerouting conditions.} When the ordinary switching conditions are not met, DuoGran considers protected subflow rerouting if the current path is Invalid. This branch requires an existing same-flow arrival gap greater than $2~\mu\mathrm{s}$ and a faster Available candidate satisfying the predicted-improvement check in Sec.~\ref{sec:dynamic_timeout}. The gap need not exceed the full dynamic timeout. These conditions allow an earlier path change while restricting the handoffs that require destination buffering.
+\textbf{Early-rerouting conditions.} When the ordinary branch admits no change, DuoGran considers protected subflow rerouting if the current path is Invalid and has an OWL measurement. This branch requires an existing same-flow arrival gap greater than $g_{\min}=2~\mu\mathrm{s}$. The procedure \textsc{EarlyTarget}$(c,t)$ selects the lowest-OWL Available path $i$ satisfying $L_i<L_c$, $I_{c,i}>I_{\min}$, and $t\geq e_i$, or returns $\textsc{None}$ if none qualifies. The candidates are checked individually; an ineligible global minimum does not prevent selection of another qualifying path. The gap need not exceed the full dynamic timeout. These conditions restrict the handoffs that require destination buffering.
 
 \noindent
 \textbf{Destination-ToR buffering.} DuoGran uses destination-ToR reordering support following the approach established by ConWeave~\cite{Conweave}. Upon switching, the source ToR sends an END control packet along the old path and tags subsequent packets on the new path with a handoff identifier. The destination ToR buffers these packets until the corresponding END and any preceding handoff boundaries have completed, preserving packet order during the transition. CLEAR and CLOSE control messages subsequently retire the temporary handoff state.
@@ -342,31 +342,35 @@ An ordinary flowlet switch outside an active handoff does not initiate destinati
     \hrule\vspace{4pt}
     \textbf{Algorithm \thealgorithm: Per-packet Path Selection at the Source ToR}
     \par\vspace{3pt}\hrule\vspace{4pt}
-    \textbf{Input:} Each data packet $p$ arriving at the source ToR.\par
+    \textbf{Input:} Data packet $p$; flow table $F$; flow key $k$
+    encoded from destination IP, ports, and priority.\par
+    \textbf{Parameters:} Shared admission interval $\tau_{\mathrm{adm}}$;
+    minimum early gap $g_{\min}=2~\mu\mathrm{s}$.\par
+    \textbf{Notation:} $b$: candidate path; \textsc{None}: no eligible path;
+    $e_i$: next admission time for path $i$.\par
     \textbf{Output:} Forwarding path for $p$.\par
     \newcommand{\algline}[2]{\item\hspace*{#1em}#2}
     \begin{enumerate}[label=\arabic*:,leftmargin=1.8em,labelsep=0.5em,itemsep=0pt,parsep=0pt,topsep=4pt]
         \algline{0}{\textbf{procedure} \textsc{SelectPath}($p$)}
-        \algline{1}{\textbf{if} \textsc{NewConnection}($p$) \textbf{then}}
-        \algline{2}{\textbf{return} \textsc{ExplorationFirst}($p$)}
-        \algline{1}{\textbf{end if}}
-        \algline{1}{$c\gets\textsc{CurrentPath}(p)$}
-        \algline{1}{$b\gets\textsc{ChooseAvailable}(p)$}
-        \algline{1}{$g\gets\textsc{ArrivalGap}(p)$}
-        \algline{1}{\textbf{if} \textsc{Beneficial}($c,b$) \textbf{then}}
-        \algline{2}{\textbf{if not} \textsc{Congested}($c$) \textbf{then}}
-        \algline{3}{$T\gets\textsc{DynamicTimeout}(c,b)$}
-        \algline{3}{\textbf{if} $g>T$ \textbf{and not} \textsc{Paused}($c$) \textbf{then}}
-        \algline{4}{\textbf{return} $b$}
-        \algline{3}{\textbf{end if}}
-        \algline{2}{\textbf{else}}
-        \algline{3}{\textbf{if} $g>g_{\min}$ \textbf{and} $L_b<L_c$ \textbf{then}}
+        \algline{1}{$t\gets\textsc{Now}()$}
+        \algline{1}{\textbf{if} $k\notin\mathrm{keys}(F)$ \textbf{then}}
+        \algline{2}{$b\gets\textsc{SelectInitialPath}(p,t)$}
+        \algline{1}{\textbf{else}}
+        \algline{2}{$c\gets F[k].\mathrm{path}$}
+        \algline{2}{$g\gets t-F[k].\mathrm{lastArrival}$}
+        \algline{2}{$b\gets\textsc{FlowletTarget}(c,g,t)$}
+        \algline{2}{\textbf{if} $b=\textsc{None}$ \textbf{and} \textsc{Invalid}($c$) \textbf{and} $g>g_{\min}$ \textbf{then}}
+        \algline{3}{$b\gets\textsc{EarlyTarget}(c,t)$}
+        \algline{3}{\textbf{if} $b\neq\textsc{None}$ \textbf{then}}
         \algline{4}{\textsc{ProtectedSubflowSwitch}($p,c,b$)}
-        \algline{4}{\textbf{return} $b$}
         \algline{3}{\textbf{end if}}
         \algline{2}{\textbf{end if}}
+        \algline{2}{\textbf{if} $b=\textsc{None}$ \textbf{then}}
+        \algline{3}{\textbf{return} $c$}
+        \algline{2}{\textbf{end if}}
         \algline{1}{\textbf{end if}}
-        \algline{1}{\textbf{return} $c$}
+        \algline{1}{$e_b\gets t+\tau_{\mathrm{adm}}$}
+        \algline{1}{\textbf{return} $b$}
         \algline{0}{\textbf{end procedure}}
     \end{enumerate}
     \vspace{2pt}\hrule
@@ -386,12 +390,12 @@ An ordinary flowlet switch outside an active handoff does not initiate destinati
 \end{enumerate*}
 
 \noindent
-\textbf{Shared state:} Each source ToR stores one path table per destination ToR. A dense array holds each path's measurement and control state once. Internal nodes of an implicit binary tree summarize the lowest available OWL and its path, available-path count, and earliest probe-eligible time. Only Unknown paths with no pending measurement are eligible for exploration. Expiration of an invalid interval makes a path Unknown but does not automatically restore its availability.
+\textbf{Shared state:} Each source ToR stores one path table per destination ToR. A dense array holds each path's measurement and control state once. Internal nodes of an implicit binary tree summarize the lowest available OWL and its path, available-path count, and earliest probe-eligible time. Exploration considers paths with no pending measurement whose cooldown and shared admission interval have elapsed, including paths with an existing OWL sample. Expiration of an invalid interval makes a path Unknown but does not automatically restore its availability.
 
 The per-flow table records the selected path and last packet-arrival time, with additional counters for simulator logging. It retains the existing inactivity-aging policy. OWL values and rates are shared by all flows using the same ToR-pair path; they are not duplicated per flow.
 
 \noindent
-\textbf{Algorithm complexity:} For $P$ paths to one destination, reading the best available path and available count from the root costs $\mathrm{O}(1)$. Cursor-based exploration and a path-state update cost $\mathrm{O}(\log P)$. The current path-identifier lookup also uses binary search, so a complete rerouting decision is not solely an $\mathrm{O}(1)$ root read. With $D$ destinations, up to $P$ paths per destination, and $F$ active flow entries, total state is $\mathrm{O}(DP+F)$. No separate sorted measurement set or global OWL extrema are needed.
+\textbf{Algorithm complexity:} For $P$ paths to one destination, reading the best Available path and Available count from the root costs $\mathrm{O}(1)$, and updating path health costs $\mathrm{O}(\log P)$. Shared-admission filtering makes round-robin exploration a worst-case $\mathrm{O}(P)$ scan in the current implementation. Rerouting and new-flow fallback can also scan candidates; because path-identifier lookup uses binary search, their worst-case cost is $\mathrm{O}(P\log P)$ rather than a single root read. With $D$ destinations, up to $P$ paths per destination, and $F$ active flow entries, total state remains $\mathrm{O}(DP+F)$, including the per-path admission timestamps. No separate sorted measurement set or global OWL extrema are needed.
 
 \noindent
 \textbf{Measurement overhead:} Probes reuse data packets, and each flagged packet requests a reply. Limiting each path to one pending reply bounds concurrent requests but does not establish negligible aggregate overhead; reply traffic grows with the number of actively monitored paths and their refresh frequency. When new-flow arrivals are sparse, unused paths may receive no new probes, although active paths continue to be measured. The current design does not add an autonomous packet generator or a new probe-retry timer.
@@ -445,7 +449,7 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
 
 \begin{table*}[t]
     \centering
-    \caption{Training workload and performance on Spine--Leaf-128 (TP = 4, PP = 4, DP = 8).}
+    \caption{Training workload and performance on Spine--Leaf-128 (TP = 4, PP = 4, DP = 8). DuoGran uses a $20\,\mu\mathrm{s}$ shared admission interval for new flows and rerouting.}
     \label{tab:training_workload_fct}
     \footnotesize
     \setlength{\tabcolsep}{5pt}
@@ -454,16 +458,16 @@ During NS-3 replay. Computing completion and acknowledgment of an entire flow re
         \toprule
         \textbf{Communication type} & \textbf{Flow size} & \textbf{Flow count} & \textbf{Placement} & \shortstack{\textbf{ConWeave}\\\textbf{Avg/P99 FCT (ms)}} & \shortstack{\textbf{DuoGran}\\\textbf{Avg/P99 FCT (ms)}} \\
         \midrule
-        \textbf{DP ReduceScatter} & \textbf{\boldmath$\approx274.797$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{58.619 / 80.056} & \textbf{36.281 / 107.931} \\
-        \textbf{DP AllGather} & \textbf{\boldmath$\approx137.398$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{23.834 / 36.011} & \textbf{15.027 / 53.745} \\
+        \textbf{DP ReduceScatter} & \textbf{\boldmath$\approx274.797$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{58.619 / 80.056} & \textbf{37.631 / 99.647} \\
+        \textbf{DP AllGather} & \textbf{\boldmath$\approx137.398$~MiB} & \textbf{896} & \textbf{Inter-leaf} & \textbf{23.834 / 36.011} & \textbf{14.658 / 42.495} \\
         \midrule
         TP AllReduce & 4~MiB & 104,448 & Intra-leaf & 0.34739 / 0.34736 & 0.34739 / 0.34736 \\
-        TP AllReduce & 1~B & 768 & Intra-leaf & 0.00413 / 0.00741 & 0.00414 / 0.00697 \\
+        TP AllReduce & 1~B & 768 & Intra-leaf & 0.00413 / 0.00741 & 0.00411 / 0.00728 \\
         TP Broadcast & 40~B & 384 & Intra-leaf & 0.00404 / 0.00432 & 0.00404 / 0.00432 \\
         TP Broadcast & 17~KiB & 384 & Intra-leaf & 0.00593 / 0.00686 & 0.00593 / 0.00686 \\
         PP Activation/Gradient & 16~MiB & 768 & Intra-leaf & 1.396 / 1.772 & 1.396 / 1.772 \\
         \midrule
-        \multicolumn{4}{@{}l}{\textbf{Iteration completion time (ms)}} & 1263.132 & 1202.824 \\
+        \multicolumn{4}{@{}l}{\textbf{Iteration completion time (ms)}} & 1263.132 & 1177.792 \\
         \bottomrule
     \end{tabular}
 \end{table*}
@@ -573,7 +577,7 @@ Figure~\ref{fig:gap_sensitivity} shows that the effect depends on flow size and 
 % Start the conclusion below the final evaluation figure on the next column/page.
 \newpage
 \section{Conclusion and Future Work}
-DuoGran combines exploration-first path assignment with uniform, delay-change-aware flowlet rerouting in lossless RDMA networks. New flow entries first explore eligible paths; existing flows consider only the lowest-OWL available path and switch when predicted improvement and packet-gap conditions both hold. All flows share per-path feedback without a host classifier, a fixed flow-size threshold, or class-dependent routing. A per-destination summary tree supports path selection without storing a timeout per flow. Future work includes evaluating the revised policy, quantifying its reordering behavior under stale feedback, and validating a hardware implementation.
+DuoGran combines exploration-first path assignment with uniform, delay-change-aware flowlet rerouting in lossless RDMA networks. New flow entries first explore eligible paths; existing flows select admissible targets under the respective flowlet and protected-subflow conditions. New assignments and both rerouting branches share a per-path admission interval. All flows share per-path feedback without a host classifier, a fixed flow-size threshold, or class-dependent routing. A per-destination summary tree supports path selection without storing a timeout per flow. Future work includes evaluating the revised policy, quantifying its reordering behavior under stale feedback, and validating a hardware implementation.
 
 
 % IEEE journal bibliography style
